@@ -34,7 +34,7 @@ int main(void)
     PIT_TCTRL1 = PIT_TCTRL_TIE_MASK; // enable Timer 1 interrupts
     PIT_TCTRL1 |= PIT_TCTRL_TEN_MASK; // start Timer 1
 
-    enable_irq(69);
+    enable_irq(IRQ(INT_PIT1));
     EnableInterrupts
 
     while(1)

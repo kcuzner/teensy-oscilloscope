@@ -12,6 +12,7 @@
  */
 
 #include "common.h"
+#include "arm_cm4.h"
 #include "sysinit.h"
 #include "uart.h"
 
@@ -72,14 +73,14 @@ void sysinit (void)
  * NOTE: The PLL init will not configure the system clock dividers,
  * so they must be configured appropriately before calling the PLL
  * init function to ensure that clocks remain in valid ranges.
- */  
+ */
     SIM_CLKDIV1 = ( 0
                     | SIM_CLKDIV1_OUTDIV1(0)
                     | SIM_CLKDIV1_OUTDIV2(0)
                     | SIM_CLKDIV1_OUTDIV4(1) );
 
 /* releases hold with ACKISO:  Only has an effect if recovering from VLLS1, VLLS2, or VLLS3
- * if ACKISO is set you must clear ackiso before calling pll_init 
+ * if ACKISO is set you must clear ackiso before calling pll_init
  * or pll init hangs waiting for OSC to initialize.
  * if osc enabled in low power modes - enable it first before ack.
  * if I/O needs to be maintained without glitches enable outputs and modules first before ack.
@@ -109,7 +110,7 @@ void sysinit (void)
 	mcg_clk_khz = mcg_clk_hz / 1000;
 	core_clk_khz = mcg_clk_khz / (((SIM_CLKDIV1 & SIM_CLKDIV1_OUTDIV1_MASK) >> 28)+ 1);
   	periph_clk_khz = mcg_clk_khz / (((SIM_CLKDIV1 & SIM_CLKDIV1_OUTDIV2_MASK) >> 24)+ 1);
-        
+
 /*
  *  For debugging purposes, enable the trace clock and/or FB_CLK so that
  *  we'll be able to monitor clocks and know the PLL is at the frequency
@@ -231,12 +232,12 @@ int32_t  pll_init(int8_t  prdiv_val, int8_t  vdiv_val)
 	// configure the MCG_C2 register
 	// the RANGE value is determined by the external frequency. Since the RANGE parameter affects the FRDIV divide value
 	// it still needs to be set correctly even if the oscillator is not being used
-      
+
 	temp_reg = MCG_C2;
 	temp_reg &= ~(MCG_C2_RANGE0_MASK | MCG_C2_HGO0_MASK | MCG_C2_EREFS0_MASK); // clear fields before writing new values
 	temp_reg |= (MCG_C2_RANGE0(2) | (hgo_val << MCG_C2_HGO0_SHIFT) | (erefs_val << MCG_C2_EREFS0_SHIFT));
 	MCG_C2 = temp_reg;
-  
+
 /*
  *  Removed tests around frdiv_val.  The frdiv_val is fixed at 4 because the Teensy
  *  always uses a 16 MHz crystal.
@@ -279,7 +280,7 @@ int32_t  pll_init(int8_t  prdiv_val, int8_t  vdiv_val)
  *  It is enabled here but can be removed if this is not required.
  */
 	MCG_C6 |= MCG_C6_CME0_MASK;
-  
+
 /*
  *  Configure PLL
  *  Configure MCG_C5

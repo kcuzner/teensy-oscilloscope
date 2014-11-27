@@ -14,6 +14,9 @@
 /*ARM Cortex M4 implementation for interrupt priority shift*/
 #define ARM_INTERRUPT_LEVEL_BITS          4
 
+/*Determines the correct IRQ number from a INT value */
+#define IRQ(N) (N - (1 << ARM_INTERRUPT_LEVEL_BITS))
+
 /***********************************************************************/
 // function prototypes for arm_cm4.c
 void stop (void);
