@@ -51,7 +51,21 @@ int main(void)
 //void PIT1_IRQHandler() __attribute__ ((interrupt ("IRQ")));
 void PIT1_IRQHandler()
 {
-    LED2_ON;
+    static uint8_t count = 0;
+    static uint8_t stat = 0;
+    if (count == 30)
+    {
+        if (stat)
+            LED2_ON;
+        if (!stat)
+            LED2_OFF;
+        stat ^= 0x01;
+        count = 0;
+    }
+    else
+    {
+        count++;
+    }
     //reset the interrupt flag
     PIT_TFLG1 |= PIT_TFLG_TIF_MASK;
 }
