@@ -1,0 +1,8 @@
+# General build stuff
+bin
+obj
+
+# Code Blocks
+*.depend
+*.layout
+
