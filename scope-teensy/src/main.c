@@ -1,42 +1,57 @@
 #include  "common.h"
+#include  "arm_cm4.h"
 
-#define  LED_ON        GPIOC_PSOR=(1<<5)
-#define  LED_OFF    GPIOC_PCOR=(1<<5)
+#define LED_ON  GPIOC_PSOR=(1<<5)
+#define LED_OFF GPIOC_PCOR=(1<<5)
+#define LED2_ON  GPIOC_PSOR=(1<<7)
+#define LED2_OFF GPIOC_PCOR=(1<<7)
 
 
-int  main(void)
+int main(void)
 {
-    volatile uint32_t            n;
-    uint32_t                    v;
-    uint8_t                        mask;
+    volatile uint32_t n;
+    uint32_t          v;
+    uint32_t s;
+    uint8_t           mask;
 
     PORTC_PCR5 = PORT_PCR_MUX(0x1); // LED is on PC5 (pin 13), config as GPIO (alt = 1)
-    GPIOC_PDDR = (1<<5);            // make this an output pin
+    PORTC_PCR7 = PORT_PCR_MUX(0x1); // LED2 is on PC7 (pin 12), config as GPIO (alt = 1)
+    GPIOC_PDDR = (1<<5) | (1<<7);            // make this an output pin
     LED_OFF;                        // start with LED off
+    LED2_OFF;
 
     v = (uint32_t)mcg_clk_hz;
     v = v / 1000000;
 
-    if (v == 0x48)
-        LED_ON;
+    s = (uint32_t)mcg_clk_hz / 16;
 
-    while(1);
+    SIM_SCGC6 |= SIM_SCGC6_PIT_MASK;
 
-    while (1)
+    // turn on PIT
+    PIT_MCR = 0x00;
+    // Timer 1
+    PIT_LDVAL1 = 0x0003E7FF; // setup timer 1 for 256000 cycles
+    PIT_TCTRL1 = PIT_TCTRL_TIE_MASK; // enable Timer 1 interrupts
+    PIT_TCTRL1 |= PIT_TCTRL_TEN_MASK; // start Timer 1
+
+    enable_irq(69);
+    EnableInterrupts
+
+    while(1)
     {
-        for (n=0; n<10000000; n++)  ;    // dumb delay
-        mask = 0x80;
-        while (mask != 0)
-        {
-            LED_ON;
-            for (n=0; n<1000000; n++)  ;        // base delay
-            if ((v & mask) == 0)  LED_OFF;    // for 0 bit, all done
-            for (n=0; n<2000000; n++)  ;        // (for 1 bit, LED is still on)
-            LED_OFF;
-            for (n=0; n<1000000; n++)  ;
-            mask = mask >> 1;
-        }
+        LED_ON;
+        for (n = 0; n < s; n++);
+        LED_OFF;
+        for (n = 0; n < s; n++);
     }
 
     return  0;                        // should never get here!
+}
+
+//void PIT1_IRQHandler() __attribute__ ((interrupt ("IRQ")));
+void PIT1_IRQHandler()
+{
+    LED2_ON;
+    //reset the interrupt flag
+    PIT_TFLG1 |= PIT_TFLG_TIF_MASK;
 }
