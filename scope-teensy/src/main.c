@@ -25,6 +25,7 @@ int main(void)
 
     s = (uint32_t)mcg_clk_hz / 16;
 
+    //enable the PIT clock
     SIM_SCGC6 |= SIM_SCGC6_PIT_MASK;
 
     // turn on PIT
