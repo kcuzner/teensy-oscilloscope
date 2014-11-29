@@ -1,5 +1,6 @@
-#include  "common.h"
-#include  "arm_cm4.h"
+#include "common.h"
+#include "arm_cm4.h"
+#include "adc.h"
 
 #define LED_ON  GPIOC_PSOR=(1<<5)
 #define LED_OFF GPIOC_PCOR=(1<<5)
@@ -26,7 +27,8 @@ int main(void)
     s = (uint32_t)mcg_clk_hz / 16;
 
     //enable the PIT clock
-    SIM_SCGC6 |= SIM_SCGC6_PIT_MASK;
+    SIM_SCGC3 |= SIM_SCGC3_ADC1_MASK;
+    SIM_SCGC6 |= SIM_SCGC6_PIT_MASK | SIM_SCGC6_ADC0_MASK;
 
     // turn on PIT
     PIT_MCR = 0x00;
@@ -34,6 +36,8 @@ int main(void)
     PIT_LDVAL1 = 0x0003E7FF; // setup timer 1 for 256000 cycles
     PIT_TCTRL1 = PIT_TCTRL_TIE_MASK; // enable Timer 1 interrupts
     PIT_TCTRL1 |= PIT_TCTRL_TEN_MASK; // start Timer 1
+
+    adc_init(8);
 
     enable_irq(IRQ(INT_PIT1));
     EnableInterrupts

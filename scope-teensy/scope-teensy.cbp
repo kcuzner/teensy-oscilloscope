@@ -49,6 +49,7 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="include/MK20D7.h" />
+		<Unit filename="include/adc.h" />
 		<Unit filename="include/arm_cm4.h" />
 		<Unit filename="include/common.h" />
 		<Unit filename="include/mcg.h" />
@@ -58,6 +59,9 @@
 		<Unit filename="include/term_io.h" />
 		<Unit filename="include/uart.h" />
 		<Unit filename="include/wdog.h" />
+		<Unit filename="src/adc.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="src/main.c">
 			<Option compilerVar="CC" />
 		</Unit>
