@@ -1,8 +1,8 @@
 /*
  *  Teensy31_flash.ld      generic linker script for Teensy 3.1 flash-based projects
  */
- 
- 
+
+
 OUTPUT_FORMAT("elf32-littlearm", "elf32-littlearm", "elf32-littlearm")
 OUTPUT_ARCH(arm)
 ENTRY(_startup)
@@ -69,7 +69,7 @@ SECTIONS
 /*
  *  ------------------- Start of SRAM sections ---------------
  */
- 
+
 /*
  *  If moving vectors from flash to RAM, declare a reserved area for
  *  the RAM vector table.  This section should appear first, so it gets
@@ -82,18 +82,34 @@ SECTIONS
 		*(.RAMVectorTable)
 	}
 	. = ALIGN(4);
-	
-			
+
+    /**
+     * USB descriptor tables, aligned to 512 byte boundary as required
+     */
+	.usbdescriptortable (NOLOAD) : {
+		. = ALIGN(512);
+		*(.usbdescriptortable*)
+	} > sram
+
+    /**
+     * USB buffer tables
+     */
+	.usbbuffers (NOLOAD) : {
+		. = ALIGN(4);
+		*(.usbbuffers*)
+	} > sram
+
+
   /*  From generic.ld, supplied by CodeSourcery  */
   /* .ARM.exidx is sorted, so has to go in its own output section.  */
 	PROVIDE_HIDDEN (__exidx_start = .);
 	.ARM.exidx :
 	{
 		*(.ARM.exidx* .gnu.linkonce.armexidx.*)
-	} >sram  
+	} >sram
 	PROVIDE_HIDDEN (__exidx_end = .);
 
-	
+
 /*	.data : AT (_end_data_flash)   */
 	.data :
 	{
@@ -112,7 +128,7 @@ SECTIONS
 		*(.noinit)
 		*(.noinit.*)
 	} >sram
-	
+
 	_start_bss = .;
 	.bss :
 	{
@@ -125,7 +141,7 @@ SECTIONS
 
 	bss_size = _end_bss - _start_bss;
 
-	/* Stack can grow down to here, right after data and bss sections in 
+	/* Stack can grow down to here, right after data and bss sections in
 	 * SRAM */
 	_start_stack = _top_stack - TOTAL_RESERVED_STACK;
 	_top_stack = _top_stack;			/* just to make the map file easier to read */
@@ -144,7 +160,7 @@ SECTIONS
  		PROVIDE(_endHeap = .);
  	} > ahbsram1
 */
- 
+
 
 
 	/* Linker wants .eh_frame section defined because of gcc 4.4.X bug,
@@ -153,7 +169,7 @@ SECTIONS
 	{
 		*(.eh_*)
 	}
-	
+
 }
 
 _end = .;
