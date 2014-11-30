@@ -50,8 +50,8 @@
  *		   72 MHz			    8		   36
  *
  */
-#define PRDIV_VAL			8				/* PLL prescaler */
-#define VDIV_VAL			36				/* PLL multiplier */
+#define PRDIV_VAL			4				/* PLL prescaler */
+#define VDIV_VAL			24				/* PLL multiplier */
 
 /*
  *  Optionally define the system console (one of the UARTs) for serial I/O.

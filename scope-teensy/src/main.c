@@ -1,6 +1,7 @@
 #include "common.h"
 #include "arm_cm4.h"
 #include "adc.h"
+#include "usb.h"
 
 #define LED_ON  GPIOC_PSOR=(1<<5)
 #define LED_OFF GPIOC_PCOR=(1<<5)
@@ -38,15 +39,16 @@ int main(void)
     PIT_TCTRL1 |= PIT_TCTRL_TEN_MASK; // start Timer 1
 
     adc_init(8);
+    usb_init();
 
     enable_irq(IRQ(INT_PIT1));
     EnableInterrupts
 
     while(1)
     {
-        LED_ON;
+        LED2_ON;
         for (n = 0; n < s; n++);
-        LED_OFF;
+        LED2_OFF;
         for (n = 0; n < s; n++);
     }
 
@@ -60,10 +62,10 @@ void PIT1_IRQHandler()
     static uint8_t stat = 0;
     if (count == 30)
     {
-        if (stat)
-            LED2_ON;
+        /*if (stat)
+            LED_ON;
         if (!stat)
-            LED2_OFF;
+            LED_OFF;*/
         stat ^= 0x01;
         count = 0;
     }

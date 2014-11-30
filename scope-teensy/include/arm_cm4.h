@@ -17,6 +17,9 @@
 /*Determines the correct IRQ number from a INT value */
 #define IRQ(N) (N - (1 << ARM_INTERRUPT_LEVEL_BITS))
 
+/*Sets the priority of an interrupt*/
+#define NVIC_SET_PRIORITY(irqnum, priority)  (*((volatile uint8_t *)0xE000E400 + (irqnum)) = (uint8_t)(priority))
+
 /***********************************************************************/
 // function prototypes for arm_cm4.c
 void stop (void);
