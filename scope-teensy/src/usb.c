@@ -1,27 +1,23 @@
 #include "usb.h"
 #include "arm_cm4.h"
 
-/**
- * Descriptor bits struct
- * See Table 41-4
- */
-typedef struct {
-    unsigned rsrv0 :6;  //31-26
-    unsigned bc    :10; //25-16
-    unsigned rsrv1 :8;  //15-8
-    unsigned own   :1;  //7
-    unsigned data0 :1;  //6
-    union {             //5-2
-        unsigned tok_pid :4;
-        struct {
-            unsigned keep      :1;
-            unsigned ninc      :1;
-            unsigned dts       :1;
-            unsigned bdt_stall :1;
-        };
-    };
-    unsigned rsrv2 :2;  //1-0
-} bdt_bits_t;
+#define PID_OUT   0x1
+#define PID_IN    0x9
+#define PID_SOF   0x5
+#define PID_SETUP 0xd
+
+#define ENDP0_SIZE 64
+
+#define BDT_BC_SHIFT   16
+#define BDT_OWN_MASK   0x80
+#define BDT_DATA1_MASK 0x40
+#define BDT_KEEP_MASK  0x20
+#define BDT_NINC_MASK  0x10
+#define BDT_DTS_MASK   0x08
+#define BDT_STALL_MASK 0x04
+
+#define BDT_VALUE(count, data) ((count << BDT_BC_SHIFT) | BDT_OWN_MASK | (data ? BDT_DATA1_MASK : 0x00) | BDT_DTS_MASK)
+#define BDT_PID(desc) ((desc >> 2) & 0xF)
 
 /**
  * Buffer Descriptor Table entry
@@ -31,10 +27,7 @@ typedef struct {
  * A bidirectional endpoint would then need 4 entries
  */
 typedef struct {
-    union {
-        uint32_t desc;
-        bdt_bits_t desc_bits;
-    };
+    uint32_t desc;
     void* addr;
 } bdt_t;
 
@@ -43,15 +36,75 @@ typedef struct {
 #error Maximum USB endpoints must be <=15
 #endif // USB_N_ENDPOINTS
 
+//determines an appropriate BDT index for the given conditions (see fig. 41-3)
+#define RX 0
+#define TX 1
+#define EVEN 0
+#define ODD  1
+#define BDT_INDEX(endpoint, tx, odd) ((endpoint << 2) | (tx << 1) | odd)
+
 /**
  * Buffer descriptor table, aligned to a 512-byte boundary (see linker file)
  */
 __attribute__ ((section(".usbdescriptortable"), used))
 static bdt_t table[(USB_N_ENDPOINTS + 1)*4]; //max endpoints is 15 + 1 control
 
+/**
+ * Endpoint 0 receive buffers (2x64 bytes)
+ */
+static uint8_t endp0_rx[2][ENDP0_SIZE];
+
+/**
+ * Handler functions for when a token completes
+ * TODO: Determine if this structure really will work for all kinds of handlers
+ *
+ * I hope this looks like a dynamic jump table to the compiler
+ */
+static void (*handlers[USB_N_ENDPOINTS + 2]) (uint8_t);
+
+/**
+ * Default handler for endpoints which does nothing (to make sure we don't jump anywhere terrible)
+ */
+static void usb_endp_default_handler(uint8_t stat) { }
+
+/**
+ * Endpoint 0 handler
+ */
+static void usb_endp0_handler(uint8_t stat)
+{
+    //determine which bdt we are looking at here
+    bdt_t* bdt = &table[BDT_INDEX(0, (stat & USB_STAT_TX_MASK) >> USB_STAT_TX_SHIFT, (stat & USB_STAT_ODD_MASK) >> USB_STAT_ODD_SHIFT)];
+    GPIOC_PSOR=(1<<5);
+
+    switch (BDT_PID(bdt->desc))
+    {
+    case PID_SETUP:
+    case PID_IN:
+    case PID_OUT:
+    case PID_SOF:
+        break;
+    }
+}
+
+void usb_register_handler(uint8_t endpoint, void (*f) (uint8_t))
+{
+    handlers[endpoint] = f;
+}
+
 void usb_init(void)
 {
     uint32_t i;
+
+    usb_register_handler(0, usb_endp0_handler);
+
+    //switch all handlers to point to the default if they are null
+    for (i = 0;i < USB_N_ENDPOINTS + 1; i++)
+    {
+        if (!handlers[i])
+        {
+            handlers[i] = usb_endp_default_handler;
+        }
+    }
 
     //reset the buffer descriptors
     for (i = 0; i < (USB_N_ENDPOINTS + 1) * 4; i++)
@@ -96,6 +149,71 @@ void usb_init(void)
 
 void USBOTG_IRQHandler(void)
 {
-    USB0_ISTAT = USB0_ISTAT;
-    GPIOC_PSOR=(1<<5);
+    uint8_t status;
+    uint8_t stat, endpoint;
+
+    status = USB0_ISTAT;
+
+    if (status & USB_ISTAT_USBRST_MASK)
+    {
+        //handle USB reset
+
+        //initialize endpoint 0 ping-pong buffers
+        USB0_CTL |= USB_CTL_ODDRST_MASK;
+        table[BDT_INDEX(0, RX, EVEN)].desc = BDT_VALUE(ENDP0_SIZE, 0);
+        table[BDT_INDEX(0, RX, EVEN)].addr = endp0_rx[0];
+        table[BDT_INDEX(0, RX, ODD)].desc = BDT_VALUE(ENDP0_SIZE, 0);
+        table[BDT_INDEX(0, RX, ODD)].addr = endp0_rx[1];
+        table[BDT_INDEX(0, TX, EVEN)].desc = 0;
+        table[BDT_INDEX(0, TX, ODD)].addr = 0;
+
+        //initialize endpoint0 to 0x0d (41.5.23)
+        //transmit, recieve, and handshake
+        USB0_ENDPT0 = USB_ENDPT_EPRXEN_MASK | USB_ENDPT_EPTXEN_MASK | USB_ENDPT_EPHSHK_MASK;
+
+        //clear all interrupts...this is a reset
+        USB0_ERRSTAT = 0xff;
+        USB0_ISTAT = 0xff;
+
+        //after reset, we are address 0, per USB spec
+        USB0_ADDR = 0;
+
+        //all necessary interrupts are now active
+        USB0_ERREN = 0xFF;
+        USB0_INTEN = USB_INTEN_USBRSTEN_MASK | USB_INTEN_ERROREN_MASK |
+            USB_INTEN_SOFTOKEN_MASK | USB_INTEN_TOKDNEEN_MASK |
+            USB_INTEN_SLEEPEN_MASK | USB_INTEN_STALLEN_MASK;
+
+        return;
+    }
+    if (status & USB_ISTAT_ERROR_MASK)
+    {
+        //handle error
+        USB0_ERRSTAT = USB0_ERRSTAT;
+        USB0_ISTAT = USB_ISTAT_ERROR_MASK;
+    }
+    if (status & USB_ISTAT_SOFTOK_MASK)
+    {
+        //handle start of frame token
+        USB0_ISTAT = USB_ISTAT_SOFTOK_MASK;
+    }
+    if (status & USB_ISTAT_TOKDNE_MASK)
+    {
+        //handle completion of current token being processed
+        stat = USB0_STAT;
+        endpoint = stat >> 4;
+        handlers[endpoint](stat);
+
+        USB0_ISTAT = USB_ISTAT_TOKDNE_MASK;
+    }
+    if (status & USB_ISTAT_SLEEP_MASK)
+    {
+        //handle USB sleep
+        USB0_ISTAT = USB_ISTAT_SLEEP_MASK;
+    }
+    if (status & USB_ISTAT_STALL_MASK)
+    {
+        //handle usb stall
+        USB0_ISTAT = USB_ISTAT_STALL_MASK;
+    }
 }
