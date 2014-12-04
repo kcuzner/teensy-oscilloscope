@@ -58,11 +58,15 @@
 		<Unit filename="include/sysinit.h" />
 		<Unit filename="include/term_io.h" />
 		<Unit filename="include/uart.h" />
+		<Unit filename="include/usb.h" />
 		<Unit filename="include/wdog.h" />
 		<Unit filename="src/adc.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/usb.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Extensions>
