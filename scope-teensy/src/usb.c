@@ -8,23 +8,17 @@
 
 #define ENDP0_SIZE 64
 
-typedef union {
-    struct {
-        union {
-            struct {
-                uint8_t bmRequestType;
-                uint8_t bRequest;
-            };
-            uint16_t wRequestAndType;
+typedef struct {
+    union {
+        struct {
+            uint8_t bmRequestType;
+            uint8_t bRequest;
         };
-        uint16_t wValue;
-        uint16_t wIndex;
-        uint16_t wLength;
+        uint16_t wRequestAndType;
     };
-    struct {
-        uint32_t word1;
-        uint32_t word2;
-    };
+    uint16_t wValue;
+    uint16_t wIndex;
+    uint16_t wLength;
 } setup_t;
 
 typedef struct {
@@ -99,9 +93,7 @@ typedef struct {
 } bdt_t;
 
 // we enforce a max of 15 endpoints (15 + 1 control = 16)
-#if USB_N_ENDPOINTS > 15
-#error Maximum USB endpoints must be <=15
-#endif // USB_N_ENDPOINTS
+#define USB_N_ENDPOINTS 15
 
 //determines an appropriate BDT index for the given conditions (see fig. 41-3)
 #define RX 0
@@ -120,14 +112,6 @@ static bdt_t table[(USB_N_ENDPOINTS + 1)*4]; //max endpoints is 15 + 1 control
  * Endpoint 0 receive buffers (2x64 bytes)
  */
 static uint8_t endp0_rx[2][ENDP0_SIZE];
-
-/**
- * Handler functions for when a token completes
- * TODO: Determine if this structure really will work for all kinds of handlers
- *
- * I hope this looks like a dynamic jump table to the compiler
- */
-static void (*handlers[USB_N_ENDPOINTS + 2]) (uint8_t);
 
 /**
  * Device descriptor
@@ -186,11 +170,6 @@ static const descriptor_entry_t descriptors[] = {
     { 0x0200, 0x0000, &cfg_descriptor, 18 },
     { 0x0000, 0x0000, NULL, 0 }
 };
-
-/**
- * Default handler for endpoints which does nothing (to make sure we don't jump anywhere terrible)
- */
-static void usb_endp_default_handler(uint8_t stat) { }
 
 static uint8_t endp0_odd, endp0_data = 0;
 static void usb_endp0_transmit(const void* data, uint8_t length)
@@ -255,7 +234,7 @@ static void usb_endp0_handle_setup(setup_t* packet)
 /**
  * Endpoint 0 handler
  */
-static void usb_endp0_handler(uint8_t stat)
+void usb_endp0_handler(uint8_t stat)
 {
     static setup_t last_setup;
 
@@ -299,25 +278,31 @@ static void usb_endp0_handler(uint8_t stat)
     USB0_CTL = USB_CTL_USBENSOFEN_MASK;
 }
 
-void usb_register_handler(uint8_t endpoint, void (*f) (uint8_t))
-{
-    handlers[endpoint] = f;
-}
+/**
+ * Default handler for USB endpoints that does nothing
+ */
+static void usb_endp_default_handler(uint8_t stat) { }
+
+//weak aliases as "defaults" for the usb endpoint handlers
+void usb_endp1_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
+void usb_endp2_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
+void usb_endp3_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
+void usb_endp4_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
+void usb_endp5_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
+void usb_endp6_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
+void usb_endp7_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
+void usb_endp8_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
+void usb_endp9_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
+void usb_endp10_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
+void usb_endp11_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
+void usb_endp12_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
+void usb_endp13_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
+void usb_endp14_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
+void usb_endp15_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
 
 void usb_init(void)
 {
     uint32_t i;
-
-    usb_register_handler(0, usb_endp0_handler);
-
-    //switch all handlers to point to the default if they are null
-    for (i = 0;i < USB_N_ENDPOINTS + 1; i++)
-    {
-        if (!handlers[i])
-        {
-            handlers[i] = usb_endp_default_handler;
-        }
-    }
 
     //reset the buffer descriptors
     for (i = 0; i < (USB_N_ENDPOINTS + 1) * 4; i++)
@@ -416,7 +401,57 @@ void USBOTG_IRQHandler(void)
         //handle completion of current token being processed
         stat = USB0_STAT;
         endpoint = stat >> 4;
-        handlers[endpoint](stat);
+        switch(endpoint & 0xf)
+        {
+        case 0:
+            usb_endp0_handler(stat);
+            break;
+        case 1:
+            usb_endp1_handler(stat);
+            break;
+        case 2:
+            usb_endp2_handler(stat);
+            break;
+        case 3:
+            usb_endp3_handler(stat);
+            break;
+        case 4:
+            usb_endp4_handler(stat);
+            break;
+        case 5:
+            usb_endp5_handler(stat);
+            break;
+        case 6:
+            usb_endp6_handler(stat);
+            break;
+        case 7:
+            usb_endp7_handler(stat);
+            break;
+        case 8:
+            usb_endp8_handler(stat);
+            break;
+        case 9:
+            usb_endp9_handler(stat);
+            break;
+        case 10:
+            usb_endp10_handler(stat);
+            break;
+        case 11:
+            usb_endp11_handler(stat);
+            break;
+        case 12:
+            usb_endp12_handler(stat);
+            break;
+        case 13:
+            usb_endp13_handler(stat);
+            break;
+        case 14:
+            usb_endp14_handler(stat);
+            break;
+        case 15:
+            usb_endp15_handler(stat);
+            break;
+        }
 
         USB0_ISTAT = USB_ISTAT_TOKDNE_MASK;
     }
