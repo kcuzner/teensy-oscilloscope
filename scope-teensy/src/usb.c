@@ -278,6 +278,25 @@ void usb_endp0_handler(uint8_t stat)
     USB0_CTL = USB_CTL_USBENSOFEN_MASK;
 }
 
+static void (*handlers[16])(uint8_t) = {
+    usb_endp0_handler,
+    usb_endp1_handler,
+    usb_endp2_handler,
+    usb_endp3_handler,
+    usb_endp4_handler,
+    usb_endp5_handler,
+    usb_endp6_handler,
+    usb_endp7_handler,
+    usb_endp8_handler,
+    usb_endp9_handler,
+    usb_endp10_handler,
+    usb_endp11_handler,
+    usb_endp12_handler,
+    usb_endp13_handler,
+    usb_endp14_handler,
+    usb_endp15_handler,
+};
+
 /**
  * Default handler for USB endpoints that does nothing
  */
@@ -401,57 +420,7 @@ void USBOTG_IRQHandler(void)
         //handle completion of current token being processed
         stat = USB0_STAT;
         endpoint = stat >> 4;
-        switch(endpoint & 0xf)
-        {
-        case 0:
-            usb_endp0_handler(stat);
-            break;
-        case 1:
-            usb_endp1_handler(stat);
-            break;
-        case 2:
-            usb_endp2_handler(stat);
-            break;
-        case 3:
-            usb_endp3_handler(stat);
-            break;
-        case 4:
-            usb_endp4_handler(stat);
-            break;
-        case 5:
-            usb_endp5_handler(stat);
-            break;
-        case 6:
-            usb_endp6_handler(stat);
-            break;
-        case 7:
-            usb_endp7_handler(stat);
-            break;
-        case 8:
-            usb_endp8_handler(stat);
-            break;
-        case 9:
-            usb_endp9_handler(stat);
-            break;
-        case 10:
-            usb_endp10_handler(stat);
-            break;
-        case 11:
-            usb_endp11_handler(stat);
-            break;
-        case 12:
-            usb_endp12_handler(stat);
-            break;
-        case 13:
-            usb_endp13_handler(stat);
-            break;
-        case 14:
-            usb_endp14_handler(stat);
-            break;
-        case 15:
-            usb_endp15_handler(stat);
-            break;
-        }
+        handlers[endpoint & 0xf](stat);
 
         USB0_ISTAT = USB_ISTAT_TOKDNE_MASK;
     }
