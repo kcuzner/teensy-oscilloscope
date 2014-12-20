@@ -63,6 +63,12 @@ typedef struct {
 } cfg_descriptor_t;
 
 typedef struct {
+    uint8_t bLength;
+    uint8_t bDescriptorType;
+    uint16_t wString[];
+} str_descriptor_t;
+
+typedef struct {
     uint16_t wValue;
     uint16_t wIndex;
     const void* addr;
@@ -131,7 +137,7 @@ static dev_descriptor_t dev_descriptor = {
     .idVendor = 0x16c0,
     .idProduct = 0x05dc,
     .bcdDevice = 0x0001,
-    .iManufacturer = 0,
+    .iManufacturer = 1,
     .iProduct = 0,
     .iSerialNumber = 0,
     .bNumConfigurations = 1
@@ -165,9 +171,23 @@ static cfg_descriptor_t cfg_descriptor = {
     }
 };
 
+static str_descriptor_t lang_descriptor = {
+    .bLength = 4,
+    .bDescriptorType = 3,
+    .wString = { 0x0409 } //english (US)
+};
+
+static str_descriptor_t manuf_descriptor = {
+    .bLength = 2 + 4 * 2,
+    .bDescriptorType = 3,
+    .wString = {'a','s','d','f'}
+};
+
 static const descriptor_entry_t descriptors[] = {
     { 0x0100, 0x0000, &dev_descriptor, sizeof(dev_descriptor) },
     { 0x0200, 0x0000, &cfg_descriptor, 18 },
+    { 0x0300, 0x0000, &lang_descriptor, 4 },
+    { 0x0301, 0x0409, &manuf_descriptor, 10 },
     { 0x0000, 0x0000, NULL, 0 }
 };
 
