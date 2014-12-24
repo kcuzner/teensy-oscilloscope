@@ -2,6 +2,7 @@
 #include "arm_cm4.h"
 #include "adc.h"
 #include "usb.h"
+#include "pwm.h"
 
 #define LED_ON  GPIOC_PSOR=(1<<5)
 #define LED_OFF GPIOC_PCOR=(1<<5)
@@ -40,6 +41,8 @@ int main(void)
 
     adc_init(8);
     usb_init();
+    pwm_init(1000);
+    pwm_set(0, 500);
 
     enable_irq(IRQ(INT_PIT1));
     EnableInterrupts
