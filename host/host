@@ -1,0 +1,14 @@
+#!/usr/bin/env python
+
+# Python-based host script for the USB oscilloscope
+# Kevin Cuzner
+
+# Dependencies: PyUSB, PyGObject
+
+import gui
+
+def main():
+    gui.run()
+
+if __name__ == "__main__":
+    main()

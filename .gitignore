@@ -6,3 +6,6 @@ obj
 *.depend
 *.layout
 
+# Python
+__pycache__
+env
