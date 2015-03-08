@@ -38,8 +38,10 @@
 		<Unit filename="include/MK20D7.h" />
 		<Unit filename="include/adc.h" />
 		<Unit filename="include/arm_cm4.h" />
+		<Unit filename="include/buffers.h" />
 		<Unit filename="include/common.h" />
 		<Unit filename="include/mcg.h" />
+		<Unit filename="include/oscilloscope.h" />
 		<Unit filename="include/pwm.h" />
 		<Unit filename="include/start.h" />
 		<Unit filename="include/startup.h" />
@@ -51,7 +53,13 @@
 		<Unit filename="src/adc.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="src/buffers.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="src/main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/oscilloscope.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="src/pwm.c">

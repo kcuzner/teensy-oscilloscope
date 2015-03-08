@@ -1,12 +1,15 @@
 #include "usb.h"
 #include "arm_cm4.h"
 
+#include "buffers.h"
+
 #define PID_OUT   0x1
 #define PID_IN    0x9
 #define PID_SOF   0x5
 #define PID_SETUP 0xd
 
 #define ENDP0_SIZE 64
+#define ENDP1_SIZE 64
 
 typedef struct {
     union {
@@ -20,47 +23,6 @@ typedef struct {
     uint16_t wIndex;
     uint16_t wLength;
 } setup_t;
-
-typedef struct {
-    uint8_t bLength;
-    uint8_t bDescriptorType;
-    uint16_t bcdUSB;
-    uint8_t bDeviceClass;
-    uint8_t bDeviceSubClass;
-    uint8_t bDeviceProtocol;
-    uint8_t bMaxPacketSize0;
-    uint16_t idVendor;
-    uint16_t idProduct;
-    uint16_t bcdDevice;
-    uint8_t iManufacturer;
-    uint8_t iProduct;
-    uint8_t iSerialNumber;
-    uint8_t bNumConfigurations;
-} dev_descriptor_t;
-
-typedef struct {
-    uint8_t bLength;
-    uint8_t bDescriptorType;
-    uint8_t bInterfaceNumber;
-    uint8_t bAlternateSetting;
-    uint8_t bNumEndpoints;
-    uint8_t bInterfaceClass;
-    uint8_t bInterfaceSubClass;
-    uint8_t bInterfaceProtocol;
-    uint8_t iInterface;
-} int_descriptor_t;
-
-typedef struct {
-    uint8_t bLength;
-    uint8_t bDescriptorType;
-    uint16_t wTotalLength;
-    uint8_t bNumInterfaces;
-    uint8_t bConfigurationValue;
-    uint8_t iConfiguration;
-    uint8_t bmAttributes;
-    uint8_t bMaxPower;
-    int_descriptor_t interfaces[];
-} cfg_descriptor_t;
 
 typedef struct {
     uint8_t bLength;
@@ -129,49 +91,55 @@ static uint16_t endp0_tx_datalen = 0; //length of data remaining to send
  * have a suspicion that this location is somewhere in flash, but not copied
  * to RAM.
  */
-static dev_descriptor_t dev_descriptor = {
-    .bLength = 18,
-    .bDescriptorType = 1,
-    .bcdUSB = 0x0200,
-    .bDeviceClass = 0xff,
-    .bDeviceSubClass = 0x0,
-    .bDeviceProtocol = 0x0,
-    .bMaxPacketSize0 = ENDP0_SIZE,
-    .idVendor = 0x16c0,
-    .idProduct = 0x05dc,
-    .bcdDevice = 0x0001,
-    .iManufacturer = 1,
-    .iProduct = 2,
-    .iSerialNumber = 0,
-    .bNumConfigurations = 1
+static uint8_t dev_descriptor[] = {
+    18, //bLength
+    1, //bDescriptorType
+    0x00, 0x02, //bcdUSB
+    0xff, //bDeviceClass
+    0x00, //bDeviceSubClass
+    0x00, //bDeviceProtocl
+    ENDP0_SIZE, //bMaxPacketSize0
+    0xc0, 0x16, //idVendor
+    0xdc, 0x05, //idProduct
+    0x01, 0x00, //bcdDevice
+    1, //iManufacturer
+    2, //iProduct
+    0, //iSerialNumber,
+    1, //bNumConfigurations
 };
 
 /**
  * Configuration descriptor
  * NOTE: Same thing about const applies here
  */
-static cfg_descriptor_t cfg_descriptor = {
-    .bLength = 9,
-    .bDescriptorType = 2,
-    .wTotalLength = 18,
-    .bNumInterfaces = 1,
-    .bConfigurationValue = 1,
-    .iConfiguration = 0,
-    .bmAttributes = 0x80,
-    .bMaxPower = 250,
-    .interfaces = {
-        {
-            .bLength = 9,
-            .bDescriptorType = 4,
-            .bInterfaceNumber = 0,
-            .bAlternateSetting = 0,
-            .bNumEndpoints = 0,
-            .bInterfaceClass = 0xff,
-            .bInterfaceSubClass = 0x0,
-            .bInterfaceProtocol = 0x0,
-            .iInterface = 0
-        }
-    }
+static uint8_t cfg_descriptor[] = {
+    9, //bLength
+    2, //bDescriptorType
+    9 + 9 + 7, 0x00, //wTotalLength
+    1, //bNumInterfaces
+    1, //bConfigurationValue,
+    0, //iConfiguration
+    0x80, //bmAttributes
+    250, //bMaxPower
+    /* INTERFACE 0 BEGIN */
+    9, //bLength
+    4, //bDescriptorType
+    0, //bInterfaceNumber
+    0, //bAlternateSetting
+    1, //bNumEndpoints
+    0xff, //bInterfaceClass
+    0x00, //bInterfaceSubClass,
+    0x00, //bInterfaceProtocol
+    0, //iInterface
+        /* INTERFACE 0, ENDPOINT 1 BEGIN */
+        7, //bLength
+        5, //bDescriptorType,
+        0x81, //bEndpointAddress,
+        0x02, //bmAttributes, bulk endpoint
+        ENDP1_SIZE, 0x00, //wMaxPacketSize,
+        0 //bInterval
+        /* INTERFACE 0, ENDPOINT 1 END */
+    /* INTERFACE 0 END */
 };
 
 static str_descriptor_t lang_descriptor = {
@@ -193,11 +161,11 @@ static str_descriptor_t product_descriptor = {
 };
 
 static const descriptor_entry_t descriptors[] = {
-    { 0x0100, 0x0000, &dev_descriptor, sizeof(dev_descriptor) },
-    { 0x0200, 0x0000, &cfg_descriptor, 18 },
+    { 0x0100, 0x0000, dev_descriptor, sizeof(dev_descriptor) },
+    { 0x0200, 0x0000, &cfg_descriptor, sizeof(cfg_descriptor) },
     { 0x0300, 0x0000, &lang_descriptor, 4 },
-    { 0x0301, 0x0409, &manuf_descriptor, 32 },
-    { 0x0302, 0x0409, &product_descriptor, 32 },
+    { 0x0301, 0x0409, &manuf_descriptor, 2 + 15 * 2 },
+    { 0x0302, 0x0409, &product_descriptor, 2 + 15 * 2 },
     { 0x0000, 0x0000, NULL, 0 }
 };
 
@@ -349,6 +317,48 @@ void usb_endp0_handler(uint8_t stat)
     USB0_CTL = USB_CTL_USBENSOFEN_MASK;
 }
 
+static uint8_t endp1_odd, endp1_data1 = 0;
+static void usb_endp1_transmit(const void* data, uint8_t length)
+{
+    table[BDT_INDEX(1, TX, endp0_odd)].addr = (void *)data;
+    table[BDT_INDEX(1, TX, endp0_odd)].desc = BDT_DESC(length, endp1_data1);
+    //toggle the odd and data bits
+    endp1_odd ^= 1;
+    endp1_data1 ^= 1;
+}
+
+/**
+ * Endpoint 1 handler
+ */
+void usb_endp1_handler(uint8_t stat)
+{
+    static uint8_t* buffer = NULL;
+    static uint16_t length = 0;
+
+    //determine which bdt we are looking at here
+    bdt_t* bdt = &table[BDT_INDEX(0, (stat & USB_STAT_TX_MASK) >> USB_STAT_TX_SHIFT, (stat & USB_STAT_ODD_MASK) >> USB_STAT_ODD_SHIFT)];
+
+    switch (BDT_PID(bdt->desc))
+    {
+    case PID_SETUP:
+        //we are now done with the buffer
+        bdt->desc = BDT_DESC(ENDP1_SIZE, 1);
+
+        //clear any pending IN stuff
+        table[BDT_INDEX(1, TX, EVEN)].desc = 0;
+		table[BDT_INDEX(1, TX, ODD)].desc = 0;
+        endp1_data1 = 1;
+        //unfreeze this endpoint
+        USB0_CTL = USB_CTL_USBENSOFEN_MASK;
+    case PID_IN:
+        if (buffer)
+        {
+
+        }
+        break;
+    }
+}
+
 static void (*handlers[16])(uint8_t) = {
     usb_endp0_handler,
     usb_endp1_handler,
@@ -374,7 +384,6 @@ static void (*handlers[16])(uint8_t) = {
 static void usb_endp_default_handler(uint8_t stat) { }
 
 //weak aliases as "defaults" for the usb endpoint handlers
-void usb_endp1_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
 void usb_endp2_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
 void usb_endp3_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
 void usb_endp4_handler(uint8_t) __attribute__((weak, alias("usb_endp_default_handler")));
