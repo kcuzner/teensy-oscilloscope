@@ -26,9 +26,7 @@
 		<Linker>
 			<Add option="-nostartfiles -Tcommon/Teensy31_flash.ld" />
 		</Linker>
-		<ExtraCommands>
-			<Add after="arm-none-eabi-objcopy -R .stack -O ihex $(TARGET_OUTPUT_FILE) $(TARGET_OUTPUT_DIR)$(PROJECT_NAME).hex" />
-		</ExtraCommands>
+		<Unit filename="Makefile" />
 		<Unit filename="common/Teensy31_flash.ld" />
 		<Unit filename="common/arm_cm4.c">
 			<Option compilerVar="CC" />

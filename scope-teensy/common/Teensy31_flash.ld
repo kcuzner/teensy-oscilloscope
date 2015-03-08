@@ -83,22 +83,6 @@ SECTIONS
 	}
 	. = ALIGN(4);
 
-    /**
-     * USB descriptor tables, aligned to 512 byte boundary as required
-     */
-	.usbdescriptortable (NOLOAD) : {
-		. = ALIGN(512);
-		*(.usbdescriptortable*)
-	} > sram
-
-    /**
-     * USB buffer tables
-     */
-	.usbbuffers (NOLOAD) : {
-		. = ALIGN(4);
-		*(.usbbuffers*)
-	} > sram
-
 
   /*  From generic.ld, supplied by CodeSourcery  */
   /* .ARM.exidx is sorted, so has to go in its own output section.  */

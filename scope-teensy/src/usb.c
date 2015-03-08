@@ -111,7 +111,7 @@ typedef struct {
 /**
  * Buffer descriptor table, aligned to a 512-byte boundary (see linker file)
  */
-__attribute__ ((section(".usbdescriptortable"), used))
+__attribute__ ((aligned(512), used))
 static bdt_t table[(USB_N_ENDPOINTS + 1)*4]; //max endpoints is 15 + 1 control
 
 /**

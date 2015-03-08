@@ -55,12 +55,15 @@ all:: $(BINDIR)/$(PROJECT).hex
 
 Build: $(BINDIR)/$(PROJECT).hex
 
+dump: $(BINDIR)/$(PROJECT).elf
+	$(OBJDUMP) -D $(BINDIR)/$(PROJECT).elf > $(BINDIR)/$(PROJECT).S
+
 $(BINDIR)/$(PROJECT).hex: $(BINDIR)/$(PROJECT).elf
 	$(OBJCOPY) -R .stack -O ihex $(BINDIR)/$(PROJECT).elf $(BINDIR)/$(PROJECT).hex
 
 $(BINDIR)/$(PROJECT).elf: $(OBJ)
 	@mkdir -p $(dir $@)
-	$(CC) $(OBJ) $(LDFLAGS) -o $(BINDIR)/$(PROJECT).elf 
+	$(CC) $(OBJ) $(LDFLAGS) -o $(BINDIR)/$(PROJECT).elf
 
 
 cleanBuild: clean
