@@ -119,6 +119,9 @@ static bdt_t table[(USB_N_ENDPOINTS + 1)*4]; //max endpoints is 15 + 1 control
  */
 static uint8_t endp0_rx[2][ENDP0_SIZE];
 
+static const uint8_t* endp0_tx_dataptr = NULL; //pointer to current transmit chunk
+static uint16_t endp0_tx_datalen = 0; //length of data remaining to send
+
 /**
  * Device descriptor
  * NOTE: This cannot be const because without additional attributes, it will
@@ -138,7 +141,7 @@ static dev_descriptor_t dev_descriptor = {
     .idProduct = 0x05dc,
     .bcdDevice = 0x0001,
     .iManufacturer = 1,
-    .iProduct = 0,
+    .iProduct = 2,
     .iSerialNumber = 0,
     .bNumConfigurations = 1
 };
@@ -178,16 +181,23 @@ static str_descriptor_t lang_descriptor = {
 };
 
 static str_descriptor_t manuf_descriptor = {
-    .bLength = 2 + 4 * 2,
+    .bLength = 2 + 15 * 2,
     .bDescriptorType = 3,
-    .wString = {'a','s','d','f'}
+    .wString = {'k','e','v','i', 'n', 'c', 'u', 'z', 'n', 'e', 'r', '.', 'c', 'o', 'm'}
+};
+
+static str_descriptor_t product_descriptor = {
+    .bLength = 2 + 15 * 2,
+    .bDescriptorType = 3,
+    .wString = {'T', 'e', 'e', 'n', 's', 'y', '3', '.', '1', ' ', 'S', 'c', 'o', 'p', 'e' }
 };
 
 static const descriptor_entry_t descriptors[] = {
     { 0x0100, 0x0000, &dev_descriptor, sizeof(dev_descriptor) },
     { 0x0200, 0x0000, &cfg_descriptor, 18 },
     { 0x0300, 0x0000, &lang_descriptor, 4 },
-    { 0x0301, 0x0409, &manuf_descriptor, 10 },
+    { 0x0301, 0x0409, &manuf_descriptor, 32 },
+    { 0x0302, 0x0409, &product_descriptor, 32 },
     { 0x0000, 0x0000, NULL, 0 }
 };
 
@@ -209,6 +219,7 @@ static void usb_endp0_handle_setup(setup_t* packet)
     const descriptor_entry_t* entry;
     const uint8_t* data = NULL;
     uint8_t data_length = 0;
+    uint32_t size = 0;
 
 
     switch(packet->wRequestAndType)
@@ -241,9 +252,33 @@ static void usb_endp0_handle_setup(setup_t* packet)
 
     //if we are sent here, we need to send some data
     send:
+        //truncate the data length to whatever the setup packet is expecting
         if (data_length > packet->wLength)
             data_length = packet->wLength;
-        usb_endp0_transmit(data, data_length);
+
+        //transmit 1st chunk
+        size = data_length;
+        if (size > ENDP0_SIZE)
+            size = ENDP0_SIZE;
+        usb_endp0_transmit(data, size);
+        data += size; //move the pointer down
+        data_length -= size; //move the size down
+        if (data_length == 0 && size < ENDP0_SIZE)
+            return; //all done!
+
+        //transmit 2nd chunk
+        size = data_length;
+        if (size > ENDP0_SIZE)
+            size = ENDP0_SIZE;
+        usb_endp0_transmit(data, size);
+        data += size; //move the pointer down
+        data_length -= size; //move the size down
+        if (data_length == 0 && size < ENDP0_SIZE)
+            return; //all done!
+
+        //if any data remains to be transmitted, we need to store it
+        endp0_tx_dataptr = data;
+        endp0_tx_datalen = data_length;
         return;
 
     //if we make it here, we are not able to send data and have stalled
@@ -257,6 +292,9 @@ static void usb_endp0_handle_setup(setup_t* packet)
 void usb_endp0_handler(uint8_t stat)
 {
     static setup_t last_setup;
+
+    const uint8_t* data = NULL;
+    uint32_t size = 0;
 
     //determine which bdt we are looking at here
     bdt_t* bdt = &table[BDT_INDEX(0, (stat & USB_STAT_TX_MASK) >> USB_STAT_TX_SHIFT, (stat & USB_STAT_ODD_MASK) >> USB_STAT_ODD_SHIFT)];
@@ -282,6 +320,19 @@ void usb_endp0_handler(uint8_t stat)
         USB0_CTL = USB_CTL_USBENSOFEN_MASK;
         break;
     case PID_IN:
+        //continue sending any pending transmit data
+        data = endp0_tx_dataptr;
+		if (data)
+        {
+			size = endp0_tx_datalen;
+			if (size > ENDP0_SIZE)
+                size = ENDP0_SIZE;
+			usb_endp0_transmit(data, size);
+			data += size;
+			endp0_tx_datalen -= size;
+			endp0_tx_dataptr = (endp0_tx_datalen > 0 || size == ENDP0_SIZE) ? data : NULL;
+		}
+
         if (last_setup.wRequestAndType == 0x0500)
         {
             USB0_ADDR = last_setup.wValue;
