@@ -317,11 +317,11 @@ void usb_endp0_handler(uint8_t stat)
     USB0_CTL = USB_CTL_USBENSOFEN_MASK;
 }
 
-static uint8_t endp1_odd, endp1_data1 = 0;
+static uint8_t endp1_odd = 0, endp1_data1 = 0;
 static void usb_endp1_transmit(const void* data, uint8_t length)
 {
-    table[BDT_INDEX(1, TX, endp0_odd)].addr = (void *)data;
-    table[BDT_INDEX(1, TX, endp0_odd)].desc = BDT_DESC(length, endp1_data1);
+    table[BDT_INDEX(1, TX, endp1_odd)].addr = (void *)data;
+    table[BDT_INDEX(1, TX, endp1_odd)].desc = BDT_DESC(length, endp1_data1);
     //toggle the odd and data bits
     endp1_odd ^= 1;
     endp1_data1 ^= 1;
